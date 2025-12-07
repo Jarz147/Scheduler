@@ -30,7 +30,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -55,6 +55,14 @@
             opacity: 0.9;
             max-width: 800px;
             margin: 0 auto;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
         }
 
         .main-content {
@@ -105,6 +113,7 @@
         .calendar-nav {
             display: flex;
             gap: 10px;
+            align-items: center;
         }
 
         .btn {
@@ -132,6 +141,16 @@
 
         .btn-success {
             background-color: var(--accent-color);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+        }
+
+        .btn-icon {
+            padding: 8px 12px;
+            font-size: 1rem;
         }
 
         .calendar {
@@ -263,6 +282,11 @@
         .computer-info p {
             font-size: 0.9rem;
             color: #666;
+        }
+
+        .computer-actions {
+            display: flex;
+            gap: 8px;
         }
 
         .maintenance-status {
@@ -403,6 +427,58 @@
             margin-bottom: 15px;
             opacity: 0.5;
         }
+
+        .device-id-input {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .device-id-prefix {
+            background-color: #f0f0f0;
+            padding: 12px 10px;
+            border: 1px solid #ddd;
+            border-right: none;
+            border-radius: 5px 0 0 5px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .device-id-input input {
+            border-radius: 0 5px 5px 0;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            color: var(--secondary-color);
+        }
+
+        .tab.active {
+            color: var(--secondary-color);
+            border-bottom: 3px solid var(--secondary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -410,6 +486,18 @@
         <header>
             <h1><i class="fas fa-tools"></i> Computer Preventive Maintenance Scheduler</h1>
             <p>Schedule and track preventive maintenance for computers. All maintenance schedules must be set for 2 months or more in the future.</p>
+            
+            <div class="controls">
+                <button class="btn btn-success" id="add-device-btn">
+                    <i class="fas fa-plus-circle"></i> Add New Device
+                </button>
+                <button class="btn" id="manage-devices-btn">
+                    <i class="fas fa-edit"></i> Manage Devices
+                </button>
+                <button class="btn" id="view-schedule-btn">
+                    <i class="far fa-calendar-alt"></i> View Schedule
+                </button>
+            </div>
         </header>
 
         <div class="alert alert-warning">
@@ -421,13 +509,13 @@
         </div>
 
         <div class="main-content">
-            <div class="card calendar-container">
+            <div class="card calendar-container" id="schedule-tab">
                 <div class="calendar-header">
                     <h2><i class="far fa-calendar-alt"></i> Maintenance Calendar</h2>
                     <div class="calendar-nav">
-                        <button id="prev-month" class="btn"><i class="fas fa-chevron-left"></i> Previous</button>
+                        <button id="prev-month" class="btn btn-sm"><i class="fas fa-chevron-left"></i> Prev</button>
                         <h3 id="current-month">June 2023</h3>
-                        <button id="next-month" class="btn">Next <i class="fas fa-chevron-right"></i></button>
+                        <button id="next-month" class="btn btn-sm">Next <i class="fas fa-chevron-right"></i></button>
                     </div>
                 </div>
                 <div class="calendar" id="calendar">
@@ -435,15 +523,71 @@
                 </div>
             </div>
 
-            <div class="card">
-                <h2><i class="fas fa-desktop"></i> Computers</h2>
-                <div class="computers-list" id="computers-list">
-                    <!-- Computers will be loaded by JavaScript -->
+            <div class="card" id="devices-tab">
+                <div class="tabs">
+                    <div class="tab active" data-tab="computers-list">Device List</div>
+                    <div class="tab" data-tab="add-device">Add New Device</div>
                 </div>
-                <div class="empty-state" id="no-computers" style="display: none;">
-                    <i class="fas fa-desktop"></i>
-                    <h3>No Computers Added</h3>
-                    <p>Add computers to schedule maintenance for them.</p>
+                
+                <div class="tab-content active" id="computers-list-tab">
+                    <h2><i class="fas fa-desktop"></i> Computers & Devices</h2>
+                    <div class="computers-list" id="computers-list">
+                        <!-- Computers will be loaded by JavaScript -->
+                    </div>
+                    <div class="empty-state" id="no-computers" style="display: none;">
+                        <i class="fas fa-desktop"></i>
+                        <h3>No Devices Added</h3>
+                        <p>Add computers or devices to schedule maintenance for them.</p>
+                        <button class="btn" id="add-first-device" style="margin-top: 15px;">
+                            <i class="fas fa-plus-circle"></i> Add Your First Device
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="add-device-tab">
+                    <h2><i class="fas fa-plus-circle"></i> Add New Device</h2>
+                    <form id="add-device-form">
+                        <div class="form-group">
+                            <label for="device-id">Device ID</label>
+                            <div class="device-id-input">
+                                <span class="device-id-prefix">DEV-</span>
+                                <input type="text" id="device-id" class="form-control" placeholder="001" required>
+                            </div>
+                            <small class="form-text text-muted">Enter numbers only, the prefix "DEV-" will be added automatically</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="device-name">Device Name</label>
+                            <input type="text" id="device-name" class="form-control" placeholder="e.g., Office Desktop, Laptop, Server" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="device-type">Device Type</label>
+                            <select id="device-type" class="form-control" required>
+                                <option value="">-- Select device type --</option>
+                                <option value="Desktop Computer">Desktop Computer</option>
+                                <option value="Laptop">Laptop</option>
+                                <option value="Server">Server</option>
+                                <option value="Workstation">Workstation</option>
+                                <option value="Network Device">Network Device</option>
+                                <option value="Printer">Printer</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="device-location">Location (Optional)</label>
+                            <input type="text" id="device-location" class="form-control" placeholder="e.g., Office Room 101, Reception">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="device-notes">Notes (Optional)</label>
+                            <textarea id="device-notes" class="form-control" rows="3" placeholder="Any additional information about this device..."></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Add Device</button>
+                        <button type="button" class="btn" id="cancel-add-device"><i class="fas fa-times"></i> Cancel</button>
+                    </form>
                 </div>
             </div>
 
@@ -464,15 +608,12 @@
             <h2><i class="fas fa-plus-circle"></i> Schedule New Maintenance</h2>
             <form id="maintenance-form">
                 <div class="form-group">
-                    <label for="computer-select">Select Computer</label>
+                    <label for="computer-select">Select Device</label>
                     <select id="computer-select" class="form-control" required>
-                        <option value="">-- Select a computer --</option>
-                        <option value="PC-001">PC-001 (Office Desktop)</option>
-                        <option value="PC-002">PC-002 (Reception Computer)</option>
-                        <option value="PC-003">PC-003 (Development Workstation)</option>
-                        <option value="PC-004">PC-004 (Accounting Computer)</option>
-                        <option value="PC-005">PC-005 (Graphics Workstation)</option>
+                        <option value="">-- Select a device --</option>
+                        <!-- Options will be populated by JavaScript -->
                     </select>
+                    <small class="form-text text-muted">Don't see your device? <a href="#" id="add-device-from-form">Add a new device first</a></small>
                 </div>
                 
                 <div class="form-group">
@@ -490,6 +631,8 @@
                         <option value="Virus Scan">Virus Scan</option>
                         <option value="Disk Cleanup">Disk Cleanup</option>
                         <option value="Full System Check">Full System Check</option>
+                        <option value="Backup Verification">Backup Verification</option>
+                        <option value="Performance Optimization">Performance Optimization</option>
                     </select>
                 </div>
                 
@@ -505,6 +648,53 @@
         <footer>
             <p>Computer Preventive Maintenance Scheduler &copy; <span id="current-year"></span> | All maintenance must be scheduled at least 2 months in advance</p>
         </footer>
+    </div>
+
+    <!-- Edit Device Modal -->
+    <div class="modal" id="edit-device-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Device Details</h3>
+                <button class="close-btn" id="close-edit-modal">&times;</button>
+            </div>
+            <form id="edit-device-form">
+                <input type="hidden" id="edit-device-id">
+                
+                <div class="form-group">
+                    <label for="edit-device-name">Device Name</label>
+                    <input type="text" id="edit-device-name" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-device-type">Device Type</label>
+                    <select id="edit-device-type" class="form-control" required>
+                        <option value="Desktop Computer">Desktop Computer</option>
+                        <option value="Laptop">Laptop</option>
+                        <option value="Server">Server</option>
+                        <option value="Workstation">Workstation</option>
+                        <option value="Network Device">Network Device</option>
+                        <option value="Printer">Printer</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-device-location">Location</label>
+                    <input type="text" id="edit-device-location" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-device-notes">Notes</label>
+                    <textarea id="edit-device-notes" class="form-control" rows="3"></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Save Changes</button>
+                    <button type="button" class="btn btn-warning" id="delete-device-btn"><i class="fas fa-trash"></i> Delete Device</button>
+                    <button type="button" class="btn" id="cancel-edit-device">Cancel</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Maintenance Detail Modal -->
@@ -524,45 +714,72 @@
         // Initialize data
         let currentDate = new Date();
         let maintenanceSchedule = [];
-        let computers = [
-            { id: "PC-001", name: "Office Desktop", lastMaintenance: "2023-04-15", nextMaintenance: "2023-08-20" },
-            { id: "PC-002", name: "Reception Computer", lastMaintenance: "2023-03-10", nextMaintenance: "2023-07-15" },
-            { id: "PC-003", name: "Development Workstation", lastMaintenance: "2023-05-05", nextMaintenance: "2023-09-10" },
-            { id: "PC-004", name: "Accounting Computer", lastMaintenance: "2023-04-30", nextMaintenance: "2023-08-30" },
-            { id: "PC-005", name: "Graphics Workstation", lastMaintenance: "2023-05-20", nextMaintenance: "2023-09-25" }
-        ];
+        let computers = [];
 
-        // Add some initial maintenance items
-        function initializeMaintenance() {
-            maintenanceSchedule = [
-                { 
-                    id: 1, 
-                    computerId: "PC-001", 
-                    computerName: "Office Desktop",
-                    date: "2023-08-20", 
-                    type: "Full System Check",
-                    notes: "Check all hardware components and update all software",
-                    status: "scheduled"
-                },
-                { 
-                    id: 2, 
-                    computerId: "PC-002", 
-                    computerName: "Reception Computer",
-                    date: "2023-07-15", 
-                    type: "Virus Scan",
-                    notes: "Perform deep virus scan and update antivirus",
-                    status: "scheduled"
-                },
-                { 
-                    id: 3, 
-                    computerId: "PC-003", 
-                    computerName: "Development Workstation",
-                    date: "2023-09-10", 
-                    type: "Software Update",
-                    notes: "Update all development tools and OS patches",
-                    status: "scheduled"
-                }
-            ];
+        // Load initial data from localStorage or create default data
+        function loadData() {
+            // Try to load from localStorage
+            const savedComputers = localStorage.getItem('pm-computers');
+            const savedMaintenance = localStorage.getItem('pm-maintenance');
+            
+            if (savedComputers) {
+                computers = JSON.parse(savedComputers);
+            } else {
+                // Create default computers if none exist
+                computers = [
+                    { id: "DEV-001", name: "Office Desktop", type: "Desktop Computer", location: "Office Room 101", notes: "Primary office computer", lastMaintenance: "2023-04-15", nextMaintenance: "2023-08-20" },
+                    { id: "DEV-002", name: "Reception Computer", type: "Desktop Computer", location: "Reception Area", notes: "Receptionist workstation", lastMaintenance: "2023-03-10", nextMaintenance: "2023-07-15" },
+                    { id: "DEV-003", name: "Development Workstation", type: "Workstation", location: "Dev Room", notes: "High-performance dev machine", lastMaintenance: "2023-05-05", nextMaintenance: "2023-09-10" },
+                    { id: "DEV-004", name: "Accounting Computer", type: "Desktop Computer", location: "Accounting Dept", notes: "Financial software installed", lastMaintenance: "2023-04-30", nextMaintenance: "2023-08-30" },
+                    { id: "DEV-005", name: "Graphics Workstation", type: "Workstation", location: "Design Room", notes: "Graphics design workstation", lastMaintenance: "2023-05-20", nextMaintenance: "2023-09-25" }
+                ];
+                saveComputers();
+            }
+            
+            if (savedMaintenance) {
+                maintenanceSchedule = JSON.parse(savedMaintenance);
+            } else {
+                // Create default maintenance items
+                maintenanceSchedule = [
+                    { 
+                        id: 1, 
+                        computerId: "DEV-001", 
+                        computerName: "Office Desktop",
+                        date: "2023-08-20", 
+                        type: "Full System Check",
+                        notes: "Check all hardware components and update all software",
+                        status: "scheduled"
+                    },
+                    { 
+                        id: 2, 
+                        computerId: "DEV-002", 
+                        computerName: "Reception Computer",
+                        date: "2023-07-15", 
+                        type: "Virus Scan",
+                        notes: "Perform deep virus scan and update antivirus",
+                        status: "scheduled"
+                    },
+                    { 
+                        id: 3, 
+                        computerId: "DEV-003", 
+                        computerName: "Development Workstation",
+                        date: "2023-09-10", 
+                        type: "Software Update",
+                        notes: "Update all development tools and OS patches",
+                        status: "scheduled"
+                    }
+                ];
+                saveMaintenance();
+            }
+        }
+
+        // Save data to localStorage
+        function saveComputers() {
+            localStorage.setItem('pm-computers', JSON.stringify(computers));
+        }
+        
+        function saveMaintenance() {
+            localStorage.setItem('pm-maintenance', JSON.stringify(maintenanceSchedule));
         }
 
         // Initialize date constraints
@@ -692,6 +909,19 @@
             }
         }
 
+        // Populate device dropdown in maintenance form
+        function populateDeviceDropdown() {
+            const computerSelect = document.getElementById('computer-select');
+            computerSelect.innerHTML = '<option value="">-- Select a device --</option>';
+            
+            computers.forEach(computer => {
+                const option = document.createElement('option');
+                option.value = computer.id;
+                option.textContent = `${computer.id} - ${computer.name} (${computer.type})`;
+                computerSelect.appendChild(option);
+            });
+        }
+
         // Render computers list
         function renderComputers() {
             const computersListEl = document.getElementById('computers-list');
@@ -733,9 +963,20 @@
                 computerItem.innerHTML = `
                     <div class="computer-info">
                         <h4>${computer.id} - ${computer.name}</h4>
-                        <p>Last maintenance: ${formatDisplayDate(computer.lastMaintenance)}</p>
+                        <p>Type: ${computer.type} | Location: ${computer.location || 'Not specified'}</p>
+                        <p>Last maintenance: ${computer.lastMaintenance ? formatDisplayDate(computer.lastMaintenance) : 'Never'}</p>
                     </div>
-                    <div class="maintenance-status ${statusClass}">${statusText}</div>
+                    <div>
+                        <div class="maintenance-status ${statusClass}" style="margin-bottom: 10px;">${statusText}</div>
+                        <div class="computer-actions">
+                            <button class="btn btn-sm btn-icon" onclick="editDevice('${computer.id}')" title="Edit device">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-icon" onclick="scheduleForDevice('${computer.id}')" title="Schedule maintenance">
+                                <i class="fas fa-calendar-plus"></i>
+                            </button>
+                        </div>
+                    </div>
                 `;
                 
                 computersListEl.appendChild(computerItem);
@@ -777,7 +1018,7 @@
                             `<span class="maintenance-status status-scheduled">Scheduled</span>`
                         }
                         <br>
-                        <button class="btn" style="margin-top: 10px;" onclick="rescheduleMaintenance(${maintenance.id})">
+                        <button class="btn btn-sm" style="margin-top: 10px;" onclick="rescheduleMaintenance(${maintenance.id})">
                             <i class="fas fa-calendar-alt"></i> Reschedule
                         </button>
                     </div>
@@ -793,213 +1034,4 @@
             if (!maintenance) return;
             
             const modal = document.getElementById('maintenance-modal');
-            const modalBody = document.getElementById('modal-body');
-            const today = new Date();
-            const maintenanceDate = new Date(maintenance.date);
-            
-            modalBody.innerHTML = `
-                <div class="form-group">
-                    <label><strong>Computer:</strong></label>
-                    <p>${maintenance.computerName} (${maintenance.computerId})</p>
-                </div>
-                
-                <div class="form-group">
-                    <label><strong>Maintenance Type:</strong></label>
-                    <p>${maintenance.type}</p>
-                </div>
-                
-                <div class="form-group">
-                    <label><strong>Scheduled Date:</strong></label>
-                    <p>${formatDisplayDate(maintenance.date)}</p>
-                    ${maintenanceDate < today ? 
-                        `<p class="maintenance-status status-overdue">This maintenance is overdue</p>` : 
-                        `<p class="maintenance-status status-scheduled">Scheduled for the future</p>`
-                    }
-                </div>
-                
-                <div class="form-group">
-                    <label><strong>Notes:</strong></label>
-                    <p>${maintenance.notes || 'No notes provided'}</p>
-                </div>
-                
-                <div class="form-group">
-                    <label><strong>Status:</strong></label>
-                    <p>${maintenance.status === 'completed' ? 'Completed' : 'Pending'}</p>
-                </div>
-                
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button class="btn" onclick="markAsCompleted(${maintenanceId})">
-                        <i class="fas fa-check"></i> Mark as Completed
-                    </button>
-                    <button class="btn" onclick="rescheduleMaintenance(${maintenanceId})">
-                        <i class="fas fa-calendar-alt"></i> Reschedule
-                    </button>
-                    <button class="btn btn-warning" onclick="deleteMaintenance(${maintenanceId})">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
-                </div>
-            `;
-            
-            modal.classList.add('active');
-        }
-
-        // Reschedule maintenance
-        function rescheduleMaintenance(maintenanceId) {
-            const maintenance = maintenanceSchedule.find(m => m.id === maintenanceId);
-            if (!maintenance) return;
-            
-            // Pre-fill the form with maintenance details
-            document.getElementById('computer-select').value = maintenance.computerId;
-            document.getElementById('maintenance-type').value = maintenance.type;
-            document.getElementById('notes').value = maintenance.notes || '';
-            
-            // Set date to current maintenance date (user can change it)
-            document.getElementById('maintenance-date').value = maintenance.date;
-            
-            // Scroll to form
-            document.getElementById('maintenance-form').scrollIntoView({ behavior: 'smooth' });
-            
-            // Close modal if open
-            document.getElementById('maintenance-modal').classList.remove('active');
-            
-            // Show message
-            alert(`Now rescheduling maintenance for ${maintenance.computerName}. Select a new date (at least 2 months from today) and submit the form.`);
-        }
-
-        // Mark maintenance as completed
-        function markAsCompleted(maintenanceId) {
-            const maintenanceIndex = maintenanceSchedule.findIndex(m => m.id === maintenanceId);
-            if (maintenanceIndex === -1) return;
-            
-            maintenanceSchedule[maintenanceIndex].status = 'completed';
-            
-            // Update computer's last maintenance date
-            const computer = computers.find(c => c.id === maintenanceSchedule[maintenanceIndex].computerId);
-            if (computer) {
-                computer.lastMaintenance = maintenanceSchedule[maintenanceIndex].date;
-            }
-            
-            // Update UI
-            renderComputers();
-            renderMaintenanceList();
-            generateCalendar();
-            
-            // Close modal
-            document.getElementById('maintenance-modal').classList.remove('active');
-            
-            alert('Maintenance marked as completed!');
-        }
-
-        // Delete maintenance
-        function deleteMaintenance(maintenanceId) {
-            if (confirm('Are you sure you want to delete this maintenance schedule?')) {
-                maintenanceSchedule = maintenanceSchedule.filter(m => m.id !== maintenanceId);
-                
-                // Update UI
-                renderComputers();
-                renderMaintenanceList();
-                generateCalendar();
-                
-                // Close modal
-                document.getElementById('maintenance-modal').classList.remove('active');
-                
-                alert('Maintenance schedule deleted!');
-            }
-        }
-
-        // Handle form submission
-        document.getElementById('maintenance-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const computerSelect = document.getElementById('computer-select');
-            const computerId = computerSelect.value;
-            const computerName = computerSelect.options[computerSelect.selectedIndex].text.split(' (')[0];
-            const date = document.getElementById('maintenance-date').value;
-            const type = document.getElementById('maintenance-type').value;
-            const notes = document.getElementById('notes').value;
-            
-            // Validate date is at least 2 months from today
-            const today = new Date();
-            const selectedDate = new Date(date);
-            const minDate = new Date(today);
-            minDate.setMonth(minDate.getMonth() + 2);
-            
-            if (selectedDate < minDate) {
-                alert(`Error: Maintenance must be scheduled at least 2 months from today. Minimum date is ${formatDate(minDate)}.`);
-                return;
-            }
-            
-            // Check if there's already a maintenance for this computer on this date
-            const existingMaintenance = maintenanceSchedule.find(m => 
-                m.computerId === computerId && m.date === date && m.status === 'scheduled'
-            );
-            
-            if (existingMaintenance) {
-                alert(`This computer already has a maintenance scheduled for ${formatDisplayDate(date)}. Please choose a different date.`);
-                return;
-            }
-            
-            // Create new maintenance item
-            const newId = maintenanceSchedule.length > 0 ? 
-                Math.max(...maintenanceSchedule.map(m => m.id)) + 1 : 1;
-            
-            const newMaintenance = {
-                id: newId,
-                computerId,
-                computerName,
-                date,
-                type,
-                notes,
-                status: 'scheduled'
-            };
-            
-            maintenanceSchedule.push(newMaintenance);
-            
-            // Update UI
-            renderComputers();
-            renderMaintenanceList();
-            generateCalendar();
-            
-            // Reset form
-            this.reset();
-            
-            // Update min date for next schedule
-            initializeDates();
-            
-            alert(`Maintenance scheduled for ${computerName} on ${formatDisplayDate(date)}!`);
-        });
-
-        // Initialize the application
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeMaintenance();
-            initializeDates();
-            generateCalendar();
-            renderComputers();
-            renderMaintenanceList();
-            
-            // Set up calendar navigation
-            document.getElementById('prev-month').addEventListener('click', function() {
-                currentDate.setMonth(currentDate.getMonth() - 1);
-                generateCalendar();
-            });
-            
-            document.getElementById('next-month').addEventListener('click', function() {
-                currentDate.setMonth(currentDate.getMonth() + 1);
-                generateCalendar();
-            });
-            
-            // Close modal when close button is clicked
-            document.getElementById('close-modal').addEventListener('click', function() {
-                document.getElementById('maintenance-modal').classList.remove('active');
-            });
-            
-            // Close modal when clicking outside
-            document.getElementById('maintenance-modal').addEventListener('click', function(e) {
-                if (e.target === this) {
-                    this.classList.remove('active');
-                }
-            });
-        });
-    </script>
-</body>
-</html>
+            const modalBody = document.getElementById('modal-body
