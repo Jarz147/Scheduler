@@ -1,152 +1,1044 @@
-// ==========================
-// Konfigurasi
-// ==========================
-const MAINTENANCE_INTERVAL_DAYS = 30;
-const DUE_SOON_DAYS = 7;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Computer Preventive Maintenance Scheduler</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-// ==========================
-// Element DOM
-// ==========================
-const form             = document.getElementById('machine-form');
-const machineNameInput = document.getElementById('machine-name');
-const lastMainInput    = document.getElementById('last-maintenance');
-const machineList      = document.getElementById('machine-list');
-const searchInput      = document.getElementById('search');
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #2ecc71;
+            --warning-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #2c3e50;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
 
-// ==========================
-// Storage Handler
-// ==========================
-let machines = loadMachines();
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
 
-function loadMachines() {
-    try {
-        return JSON.parse(localStorage.getItem('machines')) || [];
-    } catch {
-        console.warn("LocalStorage corrupted. Resetting.");
-        localStorage.removeItem('machines');
-        return [];
-    }
-}
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
 
-function saveMachines() {
-    localStorage.setItem('machines', JSON.stringify(machines));
-}
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 25px 0;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
 
-// ==========================
-// Helper Functions
-// ==========================
-function calculateNextDate(lastDate) {
-    const date = new Date(lastDate);
-    if (isNaN(date)) return null;
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
 
-    date.setDate(date.getDate() + MAINTENANCE_INTERVAL_DAYS);
-    return date.toISOString().split('T')[0];
-}
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
 
-function getStatus(nextDate) {
-    const today = new Date();
-    const next = new Date(nextDate);
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
 
-    if (isNaN(next)) return { text: 'Invalid Date', class: 'status-overdue' };
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
 
-    const diff = Math.ceil((next - today) / 86400000);
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
 
-    if (diff < 0) return { text: 'Overdue', class: 'status-overdue' };
-    if (diff <= DUE_SOON_DAYS) return { text: 'Due Soon', class: 'status-due-soon' };
-    return { text: 'OK', class: 'status-ok' };
-}
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+        }
 
-// ==========================
-// Render Function
-// ==========================
-function renderMachines(filter = '') {
-    machineList.innerHTML = '';
+        .card h2 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--light-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-    const filtered = machines.filter(m =>
-        m.name.toLowerCase().includes(filter.toLowerCase())
-    );
+        .card h2 i {
+            color: var(--secondary-color);
+        }
 
-    filtered.forEach((machine, index) => {
-        const status = getStatus(machine.nextMaintenance);
+        .calendar-container {
+            grid-column: 1 / -1;
+        }
 
-        machineList.insertAdjacentHTML('beforeend', `
-            <tr data-index="${index}">
-                <td>${machine.name}</td>
-                <td>${machine.lastMaintenance}</td>
-                <td>${machine.nextMaintenance}</td>
-                <td class="${status.class}">${status.text}</td>
-                <td><button class="delete-btn">Delete</button></td>
-            </tr>
-        `);
-    });
-}
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
 
-// ==========================
-// Delete Handler (Event Delegation)
-// ==========================
-machineList.addEventListener('click', (e) => {
-    if (e.target.classList.contains('delete-btn')) {
-        const row = e.target.closest('tr');
-        const index = row.dataset.index;
-        machines.splice(index, 1);
-        saveMachines();
-        renderMachines(searchInput.value);
-    }
-});
+        .calendar-nav {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
 
-// ==========================
-// Overdue Check
-// ==========================
-function checkOverdue() {
-    const overdueList = machines
-        .filter(m => getStatus(m.nextMaintenance).text === 'Overdue')
-        .map(m => m.name);
+        .btn {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-    if (overdueList.length) {
-        alert(`⚠ Overdue machines:\n${overdueList.join(', ')}`);
-    }
-}
+        .btn:hover {
+            background-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
 
-// ==========================
-// Form Submit Handler
-// ==========================
-form.addEventListener('submit', (e) => {
-    e.preventDefault();
+        .btn-warning {
+            background-color: var(--warning-color);
+        }
 
-    const name = machineNameInput.value.trim();
-    const lastMaintenance = lastMainInput.value;
+        .btn-success {
+            background-color: var(--accent-color);
+        }
 
-    if (!name || !lastMaintenance) return;
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+        }
 
-    const nextMaintenance = calculateNextDate(lastMaintenance);
+        .btn-icon {
+            padding: 8px 12px;
+            font-size: 1rem;
+        }
 
-    const existing = machines.findIndex(
-        m => m.name.toLowerCase() === name.toLowerCase()
-    );
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
 
-    const newData = { name, lastMaintenance, nextMaintenance };
+        .calendar-day-header {
+            text-align: center;
+            font-weight: bold;
+            padding: 10px;
+            background-color: var(--light-color);
+            border-radius: 5px;
+            color: var(--primary-color);
+        }
 
-    if (existing >= 0) {
-        machines[existing] = newData;
-    } else {
-        machines.push(newData);
-    }
+        .calendar-day {
+            background-color: white;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 15px 5px;
+            text-align: center;
+            min-height: 100px;
+            position: relative;
+            transition: all 0.2s ease;
+        }
 
-    saveMachines();
-    renderMachines(searchInput.value);
+        .calendar-day:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+        }
 
-    form.reset();
-});
+        .calendar-day.empty {
+            background-color: #f9f9f9;
+            border: none;
+        }
 
-// ==========================
-// Search Handler
-// ==========================
-searchInput.addEventListener('input', () =>
-    renderMachines(searchInput.value)
-);
+        .calendar-day.current-day {
+            background-color: rgba(52, 152, 219, 0.1);
+            border: 2px solid var(--secondary-color);
+        }
 
-// ==========================
-// Initial Load
-// ==========================
-renderMachines();
-checkOverdue();
+        .calendar-day.has-maintenance {
+            background-color: rgba(46, 204, 113, 0.1);
+            border: 1px solid var(--accent-color);
+        }
+
+        .day-number {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            position: absolute;
+            top: 5px;
+            right: 5px;
+        }
+
+        .maintenance-event {
+            background-color: var(--accent-color);
+            color: white;
+            font-size: 0.8rem;
+            padding: 3px 6px;
+            border-radius: 3px;
+            margin-top: 25px;
+            text-align: left;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .maintenance-event.upcoming {
+            background-color: var(--secondary-color);
+        }
+
+        .maintenance-event.overdue {
+            background-color: var(--warning-color);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+        }
+
+        .computers-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+
+        .computer-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .computer-item:last-child {
+            border-bottom: none;
+        }
+
+        .computer-info h4 {
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .computer-info p {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .computer-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .maintenance-status {
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .status-scheduled {
+            background-color: rgba(52, 152, 219, 0.2);
+            color: var(--secondary-color);
+        }
+
+        .status-completed {
+            background-color: rgba(46, 204, 113, 0.2);
+            color: var(--accent-color);
+        }
+
+        .status-overdue {
+            background-color: rgba(231, 76, 60, 0.2);
+            color: var(--warning-color);
+        }
+
+        .maintenance-list {
+            list-style-type: none;
+        }
+
+        .maintenance-list li {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .maintenance-list li:last-child {
+            border-bottom: none;
+        }
+
+        .maintenance-details h4 {
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .maintenance-details p {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9rem;
+            border-top: 1px solid #ddd;
+            margin-top: 30px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            color: var(--primary-color);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .close-btn:hover {
+            color: var(--warning-color);
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-warning {
+            background-color: rgba(231, 76, 60, 0.1);
+            color: var(--warning-color);
+            border-left: 4px solid var(--warning-color);
+        }
+
+        .alert-info {
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--secondary-color);
+            border-left: 4px solid var(--secondary-color);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .device-id-input {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .device-id-prefix {
+            background-color: #f0f0f0;
+            padding: 12px 10px;
+            border: 1px solid #ddd;
+            border-right: none;
+            border-radius: 5px 0 0 5px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .device-id-input input {
+            border-radius: 0 5px 5px 0;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            color: var(--secondary-color);
+        }
+
+        .tab.active {
+            color: var(--secondary-color);
+            border-bottom: 3px solid var(--secondary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-tools"></i> Computer Preventive Maintenance Scheduler</h1>
+            <p>Schedule and track preventive maintenance for computers. All maintenance schedules must be set for 2 months or more in the future.</p>
+            
+            <div class="controls">
+                <button class="btn btn-success" id="add-device-btn">
+                    <i class="fas fa-plus-circle"></i> Add New Device
+                </button>
+                <button class="btn" id="manage-devices-btn">
+                    <i class="fas fa-edit"></i> Manage Devices
+                </button>
+                <button class="btn" id="view-schedule-btn">
+                    <i class="far fa-calendar-alt"></i> View Schedule
+                </button>
+            </div>
+        </header>
+
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div>
+                <strong>Note:</strong> All preventive maintenance must be scheduled at least 2 months in advance. 
+                You can reschedule existing maintenance as long as the new date is also at least 2 months away.
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="card calendar-container" id="schedule-tab">
+                <div class="calendar-header">
+                    <h2><i class="far fa-calendar-alt"></i> Maintenance Calendar</h2>
+                    <div class="calendar-nav">
+                        <button id="prev-month" class="btn btn-sm"><i class="fas fa-chevron-left"></i> Prev</button>
+                        <h3 id="current-month">June 2023</h3>
+                        <button id="next-month" class="btn btn-sm">Next <i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div class="calendar" id="calendar">
+                    <!-- Calendar will be generated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="card" id="devices-tab">
+                <div class="tabs">
+                    <div class="tab active" data-tab="computers-list">Device List</div>
+                    <div class="tab" data-tab="add-device">Add New Device</div>
+                </div>
+                
+                <div class="tab-content active" id="computers-list-tab">
+                    <h2><i class="fas fa-desktop"></i> Computers & Devices</h2>
+                    <div class="computers-list" id="computers-list">
+                        <!-- Computers will be loaded by JavaScript -->
+                    </div>
+                    <div class="empty-state" id="no-computers" style="display: none;">
+                        <i class="fas fa-desktop"></i>
+                        <h3>No Devices Added</h3>
+                        <p>Add computers or devices to schedule maintenance for them.</p>
+                        <button class="btn" id="add-first-device" style="margin-top: 15px;">
+                            <i class="fas fa-plus-circle"></i> Add Your First Device
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="add-device-tab">
+                    <h2><i class="fas fa-plus-circle"></i> Add New Device</h2>
+                    <form id="add-device-form">
+                        <div class="form-group">
+                            <label for="device-id">Device ID</label>
+                            <div class="device-id-input">
+                                <span class="device-id-prefix">DEV-</span>
+                                <input type="text" id="device-id" class="form-control" placeholder="001" required>
+                            </div>
+                            <small class="form-text text-muted">Enter numbers only, the prefix "DEV-" will be added automatically</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="device-name">Device Name</label>
+                            <input type="text" id="device-name" class="form-control" placeholder="e.g., Office Desktop, Laptop, Server" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="device-type">Device Type</label>
+                            <select id="device-type" class="form-control" required>
+                                <option value="">-- Select device type --</option>
+                                <option value="Desktop Computer">Desktop Computer</option>
+                                <option value="Laptop">Laptop</option>
+                                <option value="Server">Server</option>
+                                <option value="Workstation">Workstation</option>
+                                <option value="Network Device">Network Device</option>
+                                <option value="Printer">Printer</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="device-location">Location (Optional)</label>
+                            <input type="text" id="device-location" class="form-control" placeholder="e.g., Office Room 101, Reception">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="device-notes">Notes (Optional)</label>
+                            <textarea id="device-notes" class="form-control" rows="3" placeholder="Any additional information about this device..."></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Add Device</button>
+                        <button type="button" class="btn" id="cancel-add-device"><i class="fas fa-times"></i> Cancel</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-clock"></i> Upcoming Maintenance</h2>
+                <ul class="maintenance-list" id="maintenance-list">
+                    <!-- Maintenance items will be loaded by JavaScript -->
+                </ul>
+                <div class="empty-state" id="no-maintenance" style="display: none;">
+                    <i class="fas fa-clock"></i>
+                    <h3>No Upcoming Maintenance</h3>
+                    <p>Schedule maintenance to see upcoming tasks here.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-plus-circle"></i> Schedule New Maintenance</h2>
+            <form id="maintenance-form">
+                <div class="form-group">
+                    <label for="computer-select">Select Device</label>
+                    <select id="computer-select" class="form-control" required>
+                        <option value="">-- Select a device --</option>
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                    <small class="form-text text-muted">Don't see your device? <a href="#" id="add-device-from-form">Add a new device first</a></small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="maintenance-date">Maintenance Date (Must be at least 2 months from today)</label>
+                    <input type="date" id="maintenance-date" class="form-control" required>
+                    <small id="date-help" class="form-text text-muted">Today is <span id="today-date"></span>. Minimum date is <span id="min-date"></span></small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="maintenance-type">Maintenance Type</label>
+                    <select id="maintenance-type" class="form-control" required>
+                        <option value="">-- Select type --</option>
+                        <option value="Hardware Check">Hardware Check</option>
+                        <option value="Software Update">Software Update</option>
+                        <option value="Virus Scan">Virus Scan</option>
+                        <option value="Disk Cleanup">Disk Cleanup</option>
+                        <option value="Full System Check">Full System Check</option>
+                        <option value="Backup Verification">Backup Verification</option>
+                        <option value="Performance Optimization">Performance Optimization</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">Notes (Optional)</label>
+                    <textarea id="notes" class="form-control" rows="3" placeholder="Add any specific notes or instructions..."></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-success"><i class="fas fa-calendar-plus"></i> Schedule Maintenance</button>
+            </form>
+        </div>
+
+        <footer>
+            <p>Computer Preventive Maintenance Scheduler &copy; <span id="current-year"></span> | All maintenance must be scheduled at least 2 months in advance</p>
+        </footer>
+    </div>
+
+    <!-- Edit Device Modal -->
+    <div class="modal" id="edit-device-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Device Details</h3>
+                <button class="close-btn" id="close-edit-modal">&times;</button>
+            </div>
+            <form id="edit-device-form">
+                <input type="hidden" id="edit-device-id">
+                
+                <div class="form-group">
+                    <label for="edit-device-name">Device Name</label>
+                    <input type="text" id="edit-device-name" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-device-type">Device Type</label>
+                    <select id="edit-device-type" class="form-control" required>
+                        <option value="Desktop Computer">Desktop Computer</option>
+                        <option value="Laptop">Laptop</option>
+                        <option value="Server">Server</option>
+                        <option value="Workstation">Workstation</option>
+                        <option value="Network Device">Network Device</option>
+                        <option value="Printer">Printer</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-device-location">Location</label>
+                    <input type="text" id="edit-device-location" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-device-notes">Notes</label>
+                    <textarea id="edit-device-notes" class="form-control" rows="3"></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Save Changes</button>
+                    <button type="button" class="btn btn-warning" id="delete-device-btn"><i class="fas fa-trash"></i> Delete Device</button>
+                    <button type="button" class="btn" id="cancel-edit-device">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Maintenance Detail Modal -->
+    <div class="modal" id="maintenance-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Maintenance Details</h3>
+                <button class="close-btn" id="close-modal">&times;</button>
+            </div>
+            <div id="modal-body">
+                <!-- Content will be loaded by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize data
+        let currentDate = new Date();
+        let maintenanceSchedule = [];
+        let computers = [];
+
+        // Load initial data from localStorage or create default data
+        function loadData() {
+            // Try to load from localStorage
+            const savedComputers = localStorage.getItem('pm-computers');
+            const savedMaintenance = localStorage.getItem('pm-maintenance');
+            
+            if (savedComputers) {
+                computers = JSON.parse(savedComputers);
+            } else {
+                // Create default computers if none exist
+                computers = [
+                    { id: "DEV-001", name: "Office Desktop", type: "Desktop Computer", location: "Office Room 101", notes: "Primary office computer", lastMaintenance: "2023-04-15", nextMaintenance: "2023-08-20" },
+                    { id: "DEV-002", name: "Reception Computer", type: "Desktop Computer", location: "Reception Area", notes: "Receptionist workstation", lastMaintenance: "2023-03-10", nextMaintenance: "2023-07-15" },
+                    { id: "DEV-003", name: "Development Workstation", type: "Workstation", location: "Dev Room", notes: "High-performance dev machine", lastMaintenance: "2023-05-05", nextMaintenance: "2023-09-10" },
+                    { id: "DEV-004", name: "Accounting Computer", type: "Desktop Computer", location: "Accounting Dept", notes: "Financial software installed", lastMaintenance: "2023-04-30", nextMaintenance: "2023-08-30" },
+                    { id: "DEV-005", name: "Graphics Workstation", type: "Workstation", location: "Design Room", notes: "Graphics design workstation", lastMaintenance: "2023-05-20", nextMaintenance: "2023-09-25" }
+                ];
+                saveComputers();
+            }
+            
+            if (savedMaintenance) {
+                maintenanceSchedule = JSON.parse(savedMaintenance);
+            } else {
+                // Create default maintenance items
+                maintenanceSchedule = [
+                    { 
+                        id: 1, 
+                        computerId: "DEV-001", 
+                        computerName: "Office Desktop",
+                        date: "2023-08-20", 
+                        type: "Full System Check",
+                        notes: "Check all hardware components and update all software",
+                        status: "scheduled"
+                    },
+                    { 
+                        id: 2, 
+                        computerId: "DEV-002", 
+                        computerName: "Reception Computer",
+                        date: "2023-07-15", 
+                        type: "Virus Scan",
+                        notes: "Perform deep virus scan and update antivirus",
+                        status: "scheduled"
+                    },
+                    { 
+                        id: 3, 
+                        computerId: "DEV-003", 
+                        computerName: "Development Workstation",
+                        date: "2023-09-10", 
+                        type: "Software Update",
+                        notes: "Update all development tools and OS patches",
+                        status: "scheduled"
+                    }
+                ];
+                saveMaintenance();
+            }
+            
+            // Update UI
+            renderAll();
+        }
+
+        // Save data to localStorage
+        function saveComputers() {
+            localStorage.setItem('pm-computers', JSON.stringify(computers));
+        }
+        
+        function saveMaintenance() {
+            localStorage.setItem('pm-maintenance', JSON.stringify(maintenanceSchedule));
+        }
+
+        // Initialize date constraints
+        function initializeDates() {
+            const today = new Date();
+            const todayFormatted = formatDate(today);
+            document.getElementById('today-date').textContent = todayFormatted;
+            
+            // Calculate minimum date (2 months from today)
+            const minDate = new Date(today);
+            minDate.setMonth(minDate.getMonth() + 2);
+            const minDateFormatted = formatDate(minDate);
+            document.getElementById('min-date').textContent = minDateFormatted;
+            
+            // Set min attribute on date input
+            document.getElementById('maintenance-date').min = minDateFormatted;
+            
+            // Set current year in footer
+            document.getElementById('current-year').textContent = today.getFullYear();
+        }
+
+        // Format date as YYYY-MM-DD
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Format date for display
+        function formatDisplayDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+
+        // Generate calendar for current month
+        function generateCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            const currentMonthEl = document.getElementById('current-month');
+            
+            // Set current month header
+            currentMonthEl.textContent = currentDate.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long' 
+            });
+            
+            // Clear calendar
+            calendarEl.innerHTML = '';
+            
+            // Add day headers
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            days.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'calendar-day-header';
+                dayHeader.textContent = day;
+                calendarEl.appendChild(dayHeader);
+            });
+            
+            // Get first day of month and total days
+            const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+            const totalDays = lastDay.getDate();
+            const firstDayIndex = firstDay.getDay();
+            
+            // Add empty cells for days before first day of month
+            for (let i = 0; i < firstDayIndex; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-day empty';
+                calendarEl.appendChild(emptyDay);
+            }
+            
+            // Add days of the month
+            const today = new Date();
+            const todayFormatted = formatDate(today);
+            
+            for (let day = 1; day <= totalDays; day++) {
+                const dayEl = document.createElement('div');
+                const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+                const dateFormatted = formatDate(date);
+                
+                dayEl.className = 'calendar-day';
+                
+                // Check if it's today
+                if (dateFormatted === todayFormatted) {
+                    dayEl.classList.add('current-day');
+                }
+                
+                // Check if there's maintenance on this day
+                const dayMaintenance = maintenanceSchedule.filter(item => item.date === dateFormatted);
+                
+                // Add day number
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'day-number';
+                dayNumber.textContent = day;
+                dayEl.appendChild(dayNumber);
+                
+                // Add maintenance events
+                dayMaintenance.forEach(maintenance => {
+                    const eventEl = document.createElement('div');
+                    eventEl.className = 'maintenance-event';
+                    
+                    // Check if maintenance is overdue
+                    if (date < today && maintenance.status !== 'completed') {
+                        eventEl.classList.add('overdue');
+                    } else if (date >= today) {
+                        eventEl.classList.add('upcoming');
+                    }
+                    
+                    eventEl.textContent = `${maintenance.computerId}: ${maintenance.type}`;
+                    eventEl.title = `${maintenance.computerName} - ${maintenance.type}`;
+                    eventEl.addEventListener('click', () => showMaintenanceDetails(maintenance.id));
+                    
+                    dayEl.appendChild(eventEl);
+                });
+                
+                // Mark days with maintenance
+                if (dayMaintenance.length > 0) {
+                    dayEl.classList.add('has-maintenance');
+                }
+                
+                calendarEl.appendChild(dayEl);
+            }
+        }
+
+        // Populate device dropdown in maintenance form
+        function populateDeviceDropdown() {
+            const computerSelect = document.getElementById('computer-select');
+            computerSelect.innerHTML = '<option value="">-- Select a device --</option>';
+            
+            computers.forEach(computer => {
+                const option = document.createElement('option');
+                option.value = computer.id;
+                option.textContent = `${computer.id} - ${computer.name} (${computer.type})`;
+                computerSelect.appendChild(option);
+            });
+        }
+
+        // Render computers list
+        function renderComputers() {
+            const computersListEl = document.getElementById('computers-list');
+            const noComputersEl = document.getElementById('no-computers');
+            
+            if (computers.length === 0) {
+                computersListEl.style.display = 'none';
+                noComputersEl.style.display = 'block';
+                return;
+            }
+            
+            computersListEl.innerHTML = '';
+            
+            computers.forEach(computer => {
+                const computerItem = document.createElement('div');
+                computerItem.className = 'computer-item';
+                
+                // Find next maintenance for this computer
+                const nextMaintenance = maintenanceSchedule
+                    .filter(m => m.computerId === computer.id && m.status === 'scheduled')
+                    .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+                
+                let statusText = 'No maintenance scheduled';
+                let statusClass = 'status-scheduled';
+                
+                if (nextMaintenance) {
+                    const today = new Date();
+                    const maintenanceDate = new Date(nextMaintenance.date);
+                    
+                    if (maintenanceDate < today) {
+                        statusText = 'Overdue';
+                        statusClass = 'status-overdue';
+                    } else {
+                        statusText = `Due: ${formatDisplayDate(nextMaintenance.date)}`;
+                        statusClass = 'status-scheduled';
+                    }
+                }
+                
+                computerItem.innerHTML = `
+                    <div class="computer-info">
+                        <h4>${computer.id} - ${computer.name}</h4>
+                        <p>Type: ${computer.type} | Location: ${computer.location || 'Not specified'}</p>
+                        <p>Last maintenance: ${computer.lastMaintenance ? formatDisplayDate(computer.lastMaintenance) : 'Never'}</p>
+                    </div>
+                    <div>
+                        <div class="maintenance-status ${statusClass}" style="margin-bottom: 10px;">${statusText}</div>
+                        <div class="computer-actions">
+                            <button class="btn btn-sm btn-icon edit-device-btn" data-id="${computer.id}" title="Edit device">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-icon schedule-device-btn" data-id="${computer.id}" title="Schedule maintenance">
+                                <i class="fas fa-calendar-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                computersListEl.appendChild(computerItem);
+            });
+        }
+
+        // Render maintenance list
+        function renderMaintenanceList() {
+            const maintenanceListEl = document.getElementById('maintenance-list');
+            const noMaintenanceEl = document.getElementById('no-maintenance');
+            
+            // Filter to show only upcoming maintenance (scheduled)
+            const upcomingMaintenance = maintenanceSchedule
+                .filter(item => item.status === 'scheduled')
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            if (upcomingMaintenance.length === 0) {
+                maintenanceListEl.style.display = 'none';
+                noMaintenanceEl.style.display = 'block';
+                return;
+            }
+            
+            maintenanceListEl.innerHTML = '';
+            const today = new Date();
+            
+            upcomingMaintenance.forEach(maintenance => {
+                const li = document.createElement('li');
+                const maintenanceDate = new Date(maintenance.date);
+                
+                li.innerHTML = `
+                    <div class="maintenance-details">
+                        <h4>${maintenance.computerName} - ${maintenance.type}</h4>
+                        <p>Scheduled for: ${formatDisplayDate(maintenance.date)}</p>
+                        ${maintenance.notes ? `<p><small>${maintenance.notes}</small></p>` : ''}
+                    </div>
+                    <div>
+                        ${maintenanceDate < today ? 
+                            `<span class="maintenance-status status-overdue">Overdue</span>` : 
+                            `<span class="maintenance-status status-scheduled">Scheduled</span>`
+                        }
+                        <br>
+                        <button class="btn btn-sm reschedule-btn" data-id="${maintenance.id}" style="margin-top: 10px;">
+                            <i class="fas fa-calendar-alt"></i> Reschedule
+                        </button>
+                    </div>
+                `;
+                
+                maintenanceListEl.appendChild(li);
+            });
+        }
+
+        // Render all UI components
+        function renderAll() {
+            populateDeviceDropdown();
+            renderComputers();
+            renderMaintenanceList();
+            generateCalendar();
+        }
+
+        // Show maintenance details in modal
+        function showMaintenanceDetails(maintenanceId) {
+            const maintenance = maintenanceSchedule.find(m
